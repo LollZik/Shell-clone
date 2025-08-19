@@ -2,25 +2,88 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
-int main(int argc, char *argv[]) {
-  while(true){
-    setbuf(stdout, NULL);
-    printf("$ ");
+#define MAX_BUFFER_SIZE 128
 
-    char input[100];
-    fgets(input, 100, stdin);
-    input[strlen(input)-1] = '\0';
+char *commands[] = {
+  "echo",
+  "exit",
+  "type"
+};
 
-    if(strcmp(input, "exit 0") == 0){
-      return 0;
-    }
-    else if(strncmp(input,"echo ",5) == 0){
-      printf("%s\n",input + 5);
-    }
-    else{
-      printf("%s: command not found\n", input);
-    }
+typedef struct {
+  char *input;
+  uint8_t input_size;
+  bool valid_input;
+} InputBuffer;
+
+
+InputBuffer createInput(){
+  InputBuffer inputBuffer;
+
+  inputBuffer.input = calloc(MAX_BUFFER_SIZE, sizeof(char));
+  inputBuffer.input_size = 0;
+  inputBuffer.valid_input = false;
+
+  return inputBuffer;
 }
-  return 0;
+
+uint8_t captureInput(InputBuffer *inputBuffer){
+  fgets(inputBuffer->input, MAX_BUFFER_SIZE, stdin);
+  inputBuffer->input_size = strlen(inputBuffer->input) - 1;
+  inputBuffer->input[inputBuffer->input_size] = '\0';
+
+  return inputBuffer->input_size;
+}
+
+bool checkInput(InputBuffer *inputBuffer){
+  char *command = strtok(inputBuffer->input, " "); // Separate input into words
+  if(command == NULL){return false;}
+
+  if(strcmp(command,"exit") == 0){
+    exit(EXIT_SUCCESS);
+  }
+  else if(strcmp(command, "echo") == 0){
+
+    inputBuffer->valid_input = true;
+    printf("%s\n",inputBuffer->input + strlen(command)+1); // Print whole input besides the "echo "
+  }
+  else if(strcmp(command, "type") == 0){
+    inputBuffer->valid_input = true;
+    bool found = false;
+    command = strtok(NULL, " "); // get the second word from input
+
+    for(int i = 0; i < sizeof(commands) / sizeof(commands[0]); i++){
+      if(strcmp(command,commands[i])==0){
+        printf("%s is a shell builtin\n",command);
+        found = true;
+        break;
+      }
+    }
+    if(!found){
+      printf("%s: not found\n",command);
+    }
+  }
+  else{
+    inputBuffer->valid_input = false; 
+  }
+  return inputBuffer->valid_input;
+}
+
+int main(int argc, char *argv[]){
+
+  setbuf(stdout, NULL);
+  printf("$ ");
+  InputBuffer inputBuffer = createInput();
+
+  while(captureInput(&inputBuffer)){
+
+    checkInput(&inputBuffer);
+    if(!inputBuffer.valid_input){
+      printf("%s: command not found\n",inputBuffer.input);
+    }
+    printf("$ ");
+}
+  return EXIT_SUCCESS;
 }
