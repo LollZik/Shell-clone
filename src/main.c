@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "utils.h"
 
 #define MAX_BUFFER_SIZE 128
 
@@ -37,6 +38,24 @@ uint8_t captureInput(InputBuffer *inputBuffer){
   return inputBuffer->input_size;
 }
 
+bool searchPATH(char *command){
+  char *path = strdup(get_env("PATH"));
+  if(path != NULL){
+    char *dir = strtok(path,":");
+    while(dir != NULL){
+      char fullPath[1024];
+      snprintf(fullPath, sizeof(fullPath), "%s/%s",dir,command);
+      if(access_file(fullPath, 1) == 0){
+        printf("%s is %s\n",command, fullPath);
+      }
+      dir = strtok(NULL,":");
+    }
+    free(path);
+  }
+  return false;
+}
+
+
 bool checkInput(InputBuffer *inputBuffer){
   char *command = strtok(inputBuffer->input, " "); // Separate input into words
   if(command == NULL){return false;}
@@ -62,12 +81,15 @@ bool checkInput(InputBuffer *inputBuffer){
       }
     }
     if(!found){
-      printf("%s: not found\n",command);
+      found = searchPATH(command);
+      if (!found){
+        printf("%s: not found\n",command);
+      }
     }
   }
   else{
-    inputBuffer->valid_input = false; 
-  }
+    inputBuffer->valid_input = false;
+  };
   return inputBuffer->valid_input;
 }
 
@@ -84,6 +106,6 @@ int main(int argc, char *argv[]){
       printf("%s: command not found\n",inputBuffer.input);
     }
     printf("$ ");
-}
+  }
   return EXIT_SUCCESS;
 }
