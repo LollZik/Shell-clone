@@ -47,10 +47,13 @@ bool searchPATH(char *command){
       snprintf(fullPath, sizeof(fullPath), "%s/%s",dir,command);
       if(access_file(fullPath, 1) == 0){
         printf("%s is %s\n",command, fullPath);
+        free(path);
+        return true;
       }
       dir = strtok(NULL,":");
     }
     free(path);
+    return false;
   }
   return false;
 }
