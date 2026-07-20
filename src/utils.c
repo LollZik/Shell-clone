@@ -4,54 +4,72 @@
 #include <unistd.h>     // getuid, getgid, getgroups
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/wait.h>
 #include <errno.h>
 #include <limits.h>
-#include <sys/syscall.h>
-#include "utils.h"
 
-// Global list of environment variables
-extern char **environ;
+#include "utils.h"
 
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
 
+// Global list of environment variables
+extern char **environ;
+
+
 InputBuffer createInput(){
   InputBuffer inputBuffer;
 
-  inputBuffer.input = calloc(MAX_BUFFER_SIZE, sizeof(char));
+  inputBuffer.input = NULL;
+  inputBuffer.capacity = 0;
   inputBuffer.input_size = 0;
   inputBuffer.valid_input = false;
 
   return inputBuffer;
 }
 
-uint8_t captureInput(InputBuffer *inputBuffer){
-  fgets(inputBuffer->input, MAX_BUFFER_SIZE, stdin);
-  inputBuffer->input_size = strlen(inputBuffer->input) - 1;
-  inputBuffer->input[inputBuffer->input_size] = '\0';
+bool captureInput(InputBuffer *inputBuffer){
+  ssize_t chars_read = getline(&(inputBuffer->input), &(inputBuffer->capacity), stdin);
 
-  return inputBuffer->input_size;
+  if(chars_read == -1){
+      return false; 
+  }
+
+  if(chars_read > 0 && inputBuffer->input[chars_read - 1] == '\n'){
+      inputBuffer->input[chars_read - 1] = '\0';
+      chars_read--;
+  }
+  inputBuffer->input_size = chars_read;
+
+  return true;
 }
 
-bool searchPATH(char *command){
-  char *path = strdup(get_env("PATH"));
-  if(path != NULL){
-    char *dir = strtok(path,":");
-    while(dir != NULL){
-      char fullPath[1024];
-      snprintf(fullPath, sizeof(fullPath), "%s/%s",dir,command);
-      
-      if(access_file(fullPath, 1) == 0){
-        printf("%s is %s\n",command, fullPath);
-        free(path);
-        return true;
-      }
-      dir = strtok(NULL,":");
+char** tokenize_input(char* arguments){
+    if(arguments == NULL){
+        return NULL;
     }
-    free(path);
-  }
-  return false;
+
+    size_t capacity = 4;
+    char** args = malloc(capacity * sizeof(char*));
+    size_t i = 0;
+
+    char* token = strtok(arguments, " ");
+
+    while(token != NULL){
+        args[i] = token;
+        i++;
+        
+        if(i == capacity - 1){
+            capacity *= 2;
+            args = realloc(args, capacity * sizeof(char*));
+        }
+        
+        token = strtok(NULL, " ");
+    }
+    args[i] = NULL;
+    return args;
 }
 
 char *get_env(const char *__name){
@@ -62,6 +80,46 @@ char *get_env(const char *__name){
         }
     }
     return NULL;
+}
+
+char* search_PATH(char *command){
+  char *path = strdup(get_env("PATH"));
+  if(path != NULL){
+    char *dir = strtok(path,":");
+    while(dir != NULL){
+      char fullPath[1024];
+      snprintf(fullPath, sizeof(fullPath), "%s/%s",dir,command);
+      
+      if(access_file(fullPath, X_OK) == 0){
+        free(path);
+        return strdup(fullPath);
+      }
+      dir = strtok(NULL,":");
+    }
+    free(path);
+  }
+  return NULL;
+}
+
+bool execute_file(char** args, char* filepath){
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        return false;
+    }
+
+    else if (pid == 0){
+        execv(filepath, args);
+
+        // This code executes only if execv fails
+        perror("execv failed");
+        exit(EXIT_FAILURE);
+    }
+
+    else{
+        wait(NULL);
+    }
+    return true;
 }
 
 static inline uid_t get_uid(void){

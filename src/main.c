@@ -15,5 +15,6 @@ int main(int argc, char *argv[]){
     checkInput(&inputBuffer);
     printf("$ ");
   }
+  free(inputBuffer.input);
   return EXIT_SUCCESS;
 }

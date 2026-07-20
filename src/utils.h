@@ -3,25 +3,32 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_BUFFER_SIZE 128
 
 typedef struct {
   char *input;
-  uint8_t input_size;
+  size_t capacity;
+  size_t input_size;
   bool valid_input;
 } InputBuffer;
 
-
 InputBuffer createInput(void);
+bool captureInput(InputBuffer *inputBuffer);
 
-uint8_t captureInput(InputBuffer *inputBuffer);
+/* Split a raw input string into a dynamically allocated, NULL-terminated array of arguments. */
+char** tokenize_input(char* arguments);
 
-bool searchPATH(char *command);
 
-/* Return a duplicate of the value of the environment variable NAME, or NULL if it doesn't exist.  */
-extern char *get_env (const char *__name);
+/* Return a duplicate of the value of the environment variable NAME, or NULL if it doesn't exist. */
+char *get_env (const char *__name);
 
-/* Test for access to the specified path using the real UID and real GID.  */
-extern int access_file (const char *path, int type);
+/* Search the PATH environment variable for the specified command, returning its full path or NULL if not found. */
+char* search_PATH(char *command);
+
+/* Fork a new process and execute the specified file with the given arguments, waiting for its completion. */
+bool execute_file(char** args, char* filepath);
+
+
+/* Test for access to the specified path using the real UID and real GID. */
+int access_file (const char *path, int type);
 
 #endif
