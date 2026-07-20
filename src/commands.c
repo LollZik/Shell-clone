@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
 #include "commands.h"
 
 
 Command dispatch_table[] = {
-    {"echo", cmd_echo},
-    {"exit", cmd_exit},
-    {"type", cmd_type}
+    {"echo", cmd_echo },
+    {"exit", cmd_exit },
+    {"type", cmd_type },
+    {"pwd",  cmd_pwd  },
+    {"cd",   cmd_cd   },
 };
 
 const int num_commands = sizeof(dispatch_table) / sizeof(Command);
@@ -55,6 +59,22 @@ int cmd_type(char** args) {
       }
     }
     return 0;
+}
+
+int cmd_pwd(char** args){
+    char cwd[PATH_MAX_LEN]; 
+    
+    if (getcwd(cwd, sizeof(cwd) ) != NULL) {
+        printf("%s\n", cwd);
+    } else {
+        perror("pwd failed"); 
+    }
+    
+    return 0;
+}
+
+int cmd_cd(char** args){
+
 }
 
 bool checkInput(InputBuffer *inputBuffer){

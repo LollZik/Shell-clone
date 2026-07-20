@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef PATH_MAX_LEN
+#define PATH_MAX_LEN 4096
+#endif
+
 
 typedef struct {
   char *input;
