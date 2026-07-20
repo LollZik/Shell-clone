@@ -11,10 +11,6 @@
 
 #include "utils.h"
 
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
-
 // Global list of environment variables
 extern char **environ;
 
@@ -180,12 +176,12 @@ static int check_path_prefix_search(const char *path, uid_t ruid, gid_t rgid, gi
         return -1;
     }
 
-    if(n > PATH_MAX){
+    if(n > PATH_MAX_LEN){
         errno = ENAMETOOLONG; 
         return -1;
     }
 
-    char buf[PATH_MAX+1];
+    char buf[PATH_MAX_LEN+1];
     strncpy(buf, path, sizeof(buf));
     buf[sizeof(buf)-1] = '\0';
     
