@@ -15,18 +15,17 @@
 extern char **environ;
 
 
-InputBuffer createInput(){
+InputBuffer create_input(){
   InputBuffer inputBuffer;
 
   inputBuffer.input = NULL;
   inputBuffer.capacity = 0;
   inputBuffer.input_size = 0;
-  inputBuffer.valid_input = false;
 
   return inputBuffer;
 }
 
-bool captureInput(InputBuffer *inputBuffer){
+bool capture_input(InputBuffer *inputBuffer){
   ssize_t chars_read = getline(&(inputBuffer->input), &(inputBuffer->capacity), stdin);
 
   if(chars_read == -1){

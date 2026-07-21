@@ -5,7 +5,7 @@
 
 typedef int (*CommandFunc)(char **args);
 
-bool checkInput(InputBuffer *inputBuffer);
+bool handle_input(InputBuffer *inputBuffer);
 
 
 typedef struct {

@@ -74,10 +74,39 @@ int cmd_pwd(char** args){
 }
 
 int cmd_cd(char** args){
+    char* path = args[1];
 
+    if (path == NULL) {
+        char* home = get_env("HOME");
+        if (home != NULL) {
+            chdir(home);
+            free(home);
+        }
+        return 0;
+    }
+
+    if (path[0] == '~') {
+        char* home = get_env("HOME");
+        
+        if (home != NULL) {
+            char full_path[4096];
+            snprintf(full_path, sizeof(full_path), "%s%s", home, path + 1);
+            
+            if (chdir(full_path) != 0) {
+                printf("cd: %s: No such file or directory\n", path);
+            }
+            free(home);
+        }
+        return 0;
+    }
+
+    if (chdir(path) != 0) {
+        printf("cd: %s: No such file or directory\n", path);
+    }
+    return 0;
 }
 
-bool checkInput(InputBuffer *inputBuffer){
+bool handle_input(InputBuffer *inputBuffer){
     char **args = tokenize_input(inputBuffer->input);
 
     if(args[0] == NULL) {
@@ -87,20 +116,17 @@ bool checkInput(InputBuffer *inputBuffer){
 
     for(int i = 0; i < num_commands; i++){
         if(strcmp(args[0], dispatch_table[i].name) == 0){
-            inputBuffer->valid_input = true;
             dispatch_table[i].func(args);
             free(args);
             return true;
         }
     }
-    if(inputBuffer->valid_input == false){
-        char* filepath = search_PATH(args[0]);
-        if(filepath != NULL){
-            execute_file(args, filepath);
-            free(filepath);
-            free(args);
-            return true;
-        }
+    char* filepath = search_PATH(args[0]);
+    if(filepath != NULL){
+        execute_file(args, filepath);
+        free(filepath);
+        free(args);
+        return true;
     }
     free(args);
     printf("%s: command not found\n",inputBuffer->input);
