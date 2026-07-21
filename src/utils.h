@@ -12,11 +12,10 @@ typedef struct {
   char *input;
   size_t capacity;
   size_t input_size;
-  bool valid_input;
 } InputBuffer;
 
-InputBuffer createInput(void);
-bool captureInput(InputBuffer *inputBuffer);
+InputBuffer create_input(void);
+bool capture_input(InputBuffer *inputBuffer);
 
 /* Split a raw input string into a dynamically allocated, NULL-terminated array of arguments. */
 char** tokenize_input(char* arguments);

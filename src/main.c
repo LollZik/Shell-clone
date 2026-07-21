@@ -9,10 +9,10 @@ int main(int argc, char *argv[]){
 
   setbuf(stdout, NULL);
   printf("$ ");
-  InputBuffer inputBuffer = createInput();
+  InputBuffer inputBuffer = create_input();
 
-  while(captureInput(&inputBuffer)){
-    checkInput(&inputBuffer);
+  while(capture_input(&inputBuffer)){
+    handle_input(&inputBuffer);
     printf("$ ");
   }
   free(inputBuffer.input);
