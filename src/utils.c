@@ -41,29 +41,113 @@ bool capture_input(InputBuffer *inputBuffer){
   return true;
 }
 
+#define START_WORD() \
+    if (!inside_word) { \
+        args[i++] = &arguments[write_idx]; \
+        inside_word = true; \
+    }
+
 char** tokenize_input(char* arguments){
+
     if(arguments == NULL){
         return NULL;
     }
+
+    typedef enum{
+        NO_QUOTES,
+        SINGLE_QUOTES,
+        DOUBLE_QUOTES,
+    } State;
+
+    State state = NO_QUOTES;
 
     size_t capacity = 4;
     char** args = malloc(capacity * sizeof(char*));
     size_t i = 0;
 
-    char* token = strtok(arguments, " ");
+    size_t read_idx = 0;
+    size_t write_idx = 0;
 
-    while(token != NULL){
-        args[i] = token;
-        i++;
-        
-        if(i == capacity - 1){
+    bool inside_word = false;
+
+    while (arguments[read_idx] != '\0') {
+        char c = arguments[read_idx];
+        read_idx++;
+        if (i >= capacity - 1) {
             capacity *= 2;
             args = realloc(args, capacity * sizeof(char*));
         }
-        
-        token = strtok(NULL, " ");
+
+        switch (state) {
+            case NO_QUOTES:
+                if (c == ' ' || c == '\t') {
+                    if (inside_word) {
+                        arguments[write_idx++] = '\0';
+                        inside_word = false;
+                    }
+                } 
+                else if (c == '\'') {
+                    state = SINGLE_QUOTES;
+                    START_WORD();
+                } 
+                else if (c == '\"') {
+                    state = DOUBLE_QUOTES;
+                    START_WORD();
+                } 
+                else if (c == '\\') {
+                    char next_char = arguments[read_idx];
+                    
+                    if (next_char != '\0') {
+                        START_WORD();
+                        arguments[write_idx++] = next_char;
+                        read_idx++;
+                    }
+                    else {
+                        break; 
+                    }
+                } 
+                else {
+                    // Any regular letter
+                    START_WORD();
+                    arguments[write_idx++] = c;
+                }
+                break;
+
+            case SINGLE_QUOTES:
+                if (c == '\'') {
+                    state = NO_QUOTES; 
+                } else {
+                    arguments[write_idx++] = c; 
+                }
+                break;
+
+            case DOUBLE_QUOTES:
+                if (c == '\"') {
+                    state = NO_QUOTES; 
+                } 
+                else if (c == '\\') {
+                    char next_char = arguments[read_idx];
+                    
+                    if (next_char == '\\' || next_char == '\"') {
+                        arguments[write_idx++] = next_char;
+                        read_idx++;
+
+                    } else if (next_char != '\0') {
+                        // If it was something like "\a" keep the '\'
+                        arguments[write_idx++] = '\\';
+                    }
+                } 
+                else {
+                    arguments[write_idx++] = c;
+                }
+                break;
+        }
+    }
+    if (inside_word) {
+        arguments[write_idx++] = '\0';
     }
     args[i] = NULL;
+
     return args;
 }
 
