@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "commands.h"
 
@@ -109,26 +110,73 @@ int cmd_cd(char** args){
 bool handle_input(InputBuffer *inputBuffer){
     char **args = tokenize_input(inputBuffer->input);
 
+    char *out_file = NULL;
+    char *err_file = NULL;
+    bool out_append = false;
+    bool err_append = false;
+    int cut_idx = -1;
+
     if(args[0] == NULL) {
         free(args);
         return false;
     }
 
-    for(int i = 0; i < num_commands; i++){
-        if(strcmp(args[0], dispatch_table[i].name) == 0){
+    for(int i =0; args[i] != NULL; i++){
+        if (strcmp(args[i], ">") == 0 || strcmp(args[i], "1>") == 0) {
+            out_file = args[i+1];
+        }
+        else if (strcmp(args[i], ">>") == 0 || strcmp(args[i], "1>>") == 0) {
+            out_file = args[i+1];
+            out_append = true;
+        }
+        else if (strcmp(args[i], "2>") == 0) {
+            err_file = args[i+1];
+        }
+        else if (strcmp(args[i], "2>>") == 0) {
+            err_file = args[i+1];
+            err_append = true;
+        }
+        else {
+            continue;
+        }
+
+        if (cut_idx == -1) {
+        cut_idx = i;
+        }
+    }
+
+    if(cut_idx != -1){
+        args[cut_idx] = NULL;
+    }
+
+    for (int i = 0; i < num_commands; i++) {
+        if (strcmp(args[0], dispatch_table[i].name) == 0) {
+            int saved_stdout = -1;
+            int saved_stderr = -1;
+
+            if (!setup_redirections(out_file, err_file, out_append, err_append, &saved_stdout, &saved_stderr)) {
+                free(args);
+                return true;
+            }
+
             dispatch_table[i].func(args);
+
+            restore_redirections(saved_stdout, saved_stderr);
+
             free(args);
             return true;
         }
     }
+
     char* filepath = search_PATH(args[0]);
-    if(filepath != NULL){
-        execute_file(args, filepath);
+    if (filepath != NULL) {
+        execute_file(args, filepath, out_file, err_file, out_append, err_append);
         free(filepath);
         free(args);
         return true;
     }
+
+    printf("%s: command not found\n", inputBuffer->input);
     free(args);
-    printf("%s: command not found\n",inputBuffer->input);
     return false;
 }

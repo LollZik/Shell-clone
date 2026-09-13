@@ -1,13 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>     // getuid, getgid, getgroups
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <errno.h>
 #include <limits.h>
+#include <fcntl.h>
 
 #include "utils.h"
 
@@ -180,7 +181,60 @@ char* search_PATH(char *command){
   return NULL;
 }
 
-bool execute_file(char** args, char* filepath){
+bool setup_redirections(char *out_file, char *err_file, bool out_append, bool err_append, int *saved_stdout, int *saved_stderr) {
+    int fd_out = -1;
+    int fd_err = -1;
+
+    if (out_file != NULL) {
+        int flags = O_WRONLY | O_CREAT | (out_append ? O_APPEND : O_TRUNC);
+        fd_out = open(out_file, flags, 0644);
+        if (fd_out < 0) {
+            perror("shell");
+            return false;
+        }
+    }
+
+    if (err_file != NULL) {
+        int flags = O_WRONLY | O_CREAT | (err_append ? O_APPEND : O_TRUNC);
+        fd_err = open(err_file, flags, 0644);
+        if (fd_err < 0) {
+            perror("shell");
+            if (fd_out != -1) close(fd_out);
+            return false;
+        }
+    }
+
+    if (fd_out != -1) {
+        if (saved_stdout != NULL) {
+            *saved_stdout = dup(STDOUT_FILENO);
+        }
+        dup2(fd_out, STDOUT_FILENO);
+        close(fd_out);
+    }
+
+    if (fd_err != -1) {
+        if (saved_stderr != NULL) {
+            *saved_stderr = dup(STDERR_FILENO);
+        }
+        dup2(fd_err, STDERR_FILENO);
+        close(fd_err);
+    }
+
+    return true;
+}
+
+void restore_redirections(int saved_stdout, int saved_stderr) {
+    if (saved_stdout != -1) {
+        dup2(saved_stdout, STDOUT_FILENO);
+        close(saved_stdout);
+    }
+    if (saved_stderr != -1) {
+        dup2(saved_stderr, STDERR_FILENO);
+        close(saved_stderr);
+    }
+}
+
+bool execute_file(char** args, char* filepath, char* out_file, char* err_file, bool out_append, bool err_append){
     pid_t pid = fork();
 
     if (pid < 0) {
@@ -188,6 +242,10 @@ bool execute_file(char** args, char* filepath){
     }
 
     else if (pid == 0){
+        if (!setup_redirections(out_file, err_file, out_append, err_append, NULL, NULL)) {
+            exit(EXIT_FAILURE);
+        }
+
         execv(filepath, args);
 
         // This code executes only if execv fails
